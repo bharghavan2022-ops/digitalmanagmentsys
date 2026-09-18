@@ -21,6 +21,7 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmationSent, setConfirmationSent] = useState(false);
 
   function update(field: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -33,36 +34,59 @@ export default function RegisterPage() {
     setError(null);
 
     const supabase = createClient();
-    const { error: signUpError } = await supabase.auth.signUp({
+    // Profile fields ride along as auth user metadata, not a separate
+    // authenticated API call: when the Supabase project requires email
+    // confirmation, signUp() returns no session, so there's no cookie yet
+    // to authenticate a follow-up request. The profile itself gets created
+    // from this metadata on the first request that does have a session
+    // (see getCurrentUser in src/lib/auth/session.ts).
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email: form.email,
       password: form.password,
+      options: {
+        data: {
+          fullName: form.fullName,
+          phone: form.phone,
+          department: form.department,
+          yearOfStudy: Number(form.yearOfStudy),
+        },
+      },
     });
+
+    setLoading(false);
     if (signUpError) {
-      setLoading(false);
       setError(signUpError.message);
       return;
     }
 
-    const response = await fetch("/api/volunteers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fullName: form.fullName,
-        phone: form.phone,
-        department: form.department,
-        yearOfStudy: Number(form.yearOfStudy),
-      }),
-    });
-
-    setLoading(false);
-    if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
-      setError(body.error ?? "Registration failed, please try again");
+    if (!data.session) {
+      // Email confirmation is required before a session exists - nothing
+      // more to do client-side until they confirm and log in.
+      setConfirmationSent(true);
       return;
     }
 
-    router.push("/dashboard");
+    router.push("/post-login");
     router.refresh();
+  }
+
+  if (confirmationSent) {
+    return (
+      <main className="flex flex-1 items-center justify-center p-8">
+        <Card className="w-full max-w-md">
+          <CardHeader className="flex flex-col items-center gap-3">
+            <Logo />
+            <CardTitle>Check your email</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              We sent a confirmation link to <strong>{form.email}</strong>. Confirm your address,
+              then log in to finish setting up your volunteer profile.
+            </p>
+          </CardContent>
+        </Card>
+      </main>
+    );
   }
 
   return (

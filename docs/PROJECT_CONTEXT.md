@@ -110,6 +110,7 @@ Unchanged from the original context — see the project's chat history for the f
 
 ## 11. Related Documents
 
+- **`ARCHITECTURE.md`** — diagram-first reference to the actual, current folder structure, frontend/backend layering, and database schema. This document (`PROJECT_CONTEXT.md`) is the original plan and decision log; `ARCHITECTURE.md` is what's really built, kept in sync as the code changes. When they disagree, `ARCHITECTURE.md` and the code win.
 - **`nss-claude-code-prompt-guide.md`** — not present in this repository yet; add when available.
 - `nss_digital_management_system_full_chat_export.md` — not present in this repository yet.
 - `provided info` — not present in this repository yet.

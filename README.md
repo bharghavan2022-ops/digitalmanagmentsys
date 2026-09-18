@@ -2,7 +2,7 @@
 
 Digital management system for NSS (National Service Scheme) volunteers, events, attendance, certificates, and compliance reporting — a Next.js + Prisma + Supabase replacement for manual/Excel-based NSS tracking.
 
-See [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) for the full architecture, schema, and module specification this scaffold implements.
+See [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) for the original plan and open decisions, and [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for the diagram-first, kept-current reference to the actual folder structure, frontend/backend layering, and database schema.
 
 ## Stack
 

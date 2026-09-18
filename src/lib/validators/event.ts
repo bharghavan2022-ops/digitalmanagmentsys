@@ -22,5 +22,16 @@ export const registerForEventSchema = z.object({
   eventId: z.string().uuid(),
 });
 
+export const updateEventSchema = z
+  .object({
+    title: z.string().min(1).max(160).optional(),
+    description: z.string().min(1).optional(),
+    venueName: z.string().min(1).max(160).optional(),
+    maxCapacity: z.number().int().positive().optional(),
+    status: z.enum(["DRAFT", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED"]).optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, { message: "No fields to update" });
+
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type RegisterForEventInput = z.infer<typeof registerForEventSchema>;
+export type UpdateEventInput = z.infer<typeof updateEventSchema>;

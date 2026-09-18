@@ -1,15 +1,38 @@
 import Link from "next/link";
+import type { EventStatus, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Pager } from "@/components/shared/pager";
 
-export default async function AdminEventsPage() {
+const PAGE_SIZE = 12;
+const STATUSES: EventStatus[] = ["DRAFT", "UPCOMING", "ACTIVE", "COMPLETED", "CANCELLED"];
+
+export default async function AdminEventsPage({
+  searchParams,
+}: {
+  searchParams: { page?: string; status?: string };
+}) {
   const user = await getCurrentUser();
-  const events = await prisma.event.findMany({
-    orderBy: { startTime: "desc" },
-    include: { _count: { select: { registrations: true } } },
-  });
+  const page = Math.max(1, Number(searchParams.page) || 1);
+  const status = STATUSES.includes(searchParams.status as EventStatus)
+    ? (searchParams.status as EventStatus)
+    : undefined;
+
+  const where: Prisma.EventWhereInput = status ? { status } : {};
+
+  const [events, total] = await Promise.all([
+    prisma.event.findMany({
+      where,
+      orderBy: { startTime: "desc" },
+      include: { _count: { select: { registrations: true } } },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.event.count({ where }),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-8">
@@ -21,6 +44,31 @@ export default async function AdminEventsPage() {
           </Button>
         )}
       </div>
+
+      <form className="flex items-end gap-3" action="/admin/events" method="get">
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="status" className="text-sm text-muted-foreground">
+            Status
+          </label>
+          <select
+            id="status"
+            name="status"
+            defaultValue={status ?? ""}
+            className="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+          >
+            <option value="">All</option>
+            {STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Button type="submit" variant="outline">
+          Filter
+        </Button>
+      </form>
+
       <div className="grid gap-4 sm:grid-cols-2">
         {events.map((event) => (
           <Card key={event.id}>
@@ -40,9 +88,11 @@ export default async function AdminEventsPage() {
           </Card>
         ))}
         {events.length === 0 && (
-          <p className="text-sm text-muted-foreground">No events created yet.</p>
+          <p className="text-sm text-muted-foreground">No events match this filter.</p>
         )}
       </div>
+
+      <Pager basePath="/admin/events" page={page} totalPages={totalPages} searchParams={{ status }} />
     </main>
   );
 }

@@ -9,23 +9,17 @@ export function RegisterButton({
   alreadyRegistered,
   waitlisted,
   isFull,
+  canCancel,
 }: {
   eventId: string;
   alreadyRegistered: boolean;
   waitlisted: boolean;
   isFull: boolean;
+  canCancel: boolean;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  if (alreadyRegistered) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        {waitlisted ? "You are on the waitlist for this event." : "You are registered for this event."}
-      </p>
-    );
-  }
 
   async function handleRegister() {
     setLoading(true);
@@ -38,6 +32,41 @@ export function RegisterButton({
       return;
     }
     router.refresh();
+  }
+
+  async function handleCancel() {
+    setLoading(true);
+    setError(null);
+    const response = await fetch(`/api/events/${eventId}/register`, { method: "DELETE" });
+    setLoading(false);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      setError(body.error ?? "Could not cancel registration");
+      return;
+    }
+    router.refresh();
+  }
+
+  if (alreadyRegistered) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className="text-sm text-muted-foreground">
+          {waitlisted ? "You are on the waitlist for this event." : "You are registered for this event."}
+        </p>
+        {canCancel && (
+          <Button
+            onClick={handleCancel}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className="w-fit"
+          >
+            {loading ? "Cancelling..." : "Cancel registration"}
+          </Button>
+        )}
+        {error && <p className="text-sm text-destructive">{error}</p>}
+      </div>
+    );
   }
 
   return (

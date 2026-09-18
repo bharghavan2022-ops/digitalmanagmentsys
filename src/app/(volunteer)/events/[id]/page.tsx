@@ -55,6 +55,7 @@ export default async function EventDetailPage({ params }: { params: { id: string
             alreadyRegistered={Boolean(existingRegistration)}
             waitlisted={existingRegistration?.waitlisted ?? false}
             isFull={isFull}
+            canCancel={attendance?.state !== "VERIFIED_ATTENDED"}
           />
         </CardContent>
       </Card>

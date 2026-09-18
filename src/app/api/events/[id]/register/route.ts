@@ -43,3 +43,50 @@ export async function POST(_request: Request, { params }: { params: { id: string
     return toErrorResponse(error, "events.register");
   }
 }
+
+// Cancels the current volunteer's own registration. If they held a
+// confirmed (non-waitlisted) seat, the earliest-registered waitlisted
+// volunteer is promoted into it in the same transaction, so a cancellation
+// never leaves a seat empty while someone is waiting.
+export async function DELETE(_request: Request, { params }: { params: { id: string } }) {
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new UnauthorizedError("Not signed in");
+    if (user.role !== "VOLUNTEER") {
+      throw new ForbiddenError("Only volunteers can cancel their own registration");
+    }
+
+    const volunteer = await prisma.volunteerProfile.findUnique({ where: { userId: user.id } });
+    if (!volunteer) {
+      return NextResponse.json({ error: "Complete your volunteer profile first" }, { status: 400 });
+    }
+
+    const existing = await prisma.eventRegistration.findUnique({
+      where: { eventId_volunteerId: { eventId: params.id, volunteerId: volunteer.id } },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "You are not registered for this event" }, { status: 404 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.eventRegistration.delete({ where: { id: existing.id } });
+
+      if (!existing.waitlisted) {
+        const nextInLine = await tx.eventRegistration.findFirst({
+          where: { eventId: params.id, waitlisted: true },
+          orderBy: { registeredAt: "asc" },
+        });
+        if (nextInLine) {
+          await tx.eventRegistration.update({
+            where: { id: nextInLine.id },
+            data: { waitlisted: false },
+          });
+        }
+      }
+    });
+
+    return new NextResponse(null, { status: 204 });
+  } catch (error) {
+    return toErrorResponse(error, "events.unregister");
+  }
+}

@@ -1,11 +1,29 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { toErrorResponse } from "@/lib/api/error-response";
+import { checkRateLimit, clientIpFrom } from "@/lib/api/rate-limit";
+
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60_000;
 
 // Public, unauthenticated verification endpoint. Returns only the minimal
-// safe-to-disclose fields - never volunteer contact details.
-export async function GET(_request: Request, { params }: { params: { hash: string } }) {
+// safe-to-disclose fields - never volunteer contact details. Rate-limited
+// per PROJECT_CONTEXT.md §2 since it takes no auth and is open to anyone
+// with a guessable-length hash.
+export async function GET(request: Request, { params }: { params: { hash: string } }) {
   try {
+    const { allowed, retryAfterSeconds } = checkRateLimit(
+      `verify:${clientIpFrom(request)}`,
+      RATE_LIMIT,
+      RATE_WINDOW_MS,
+    );
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Too many requests, please try again shortly" },
+        { status: 429, headers: { "Retry-After": String(retryAfterSeconds) } },
+      );
+    }
+
     const certificate = await prisma.certificate.findUnique({
       where: { verificationHash: params.hash },
       include: {

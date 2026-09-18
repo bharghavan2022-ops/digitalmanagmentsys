@@ -7,6 +7,7 @@ export type SessionUser = {
   email: string;
   role: AppRole;
   isLead: boolean;
+  lastSeenAnnouncementsAt: Date | null;
 };
 
 /**
@@ -32,5 +33,11 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     create: { id: authUser.id, email: authUser.email },
   });
 
-  return { id: user.id, email: user.email, role: user.role, isLead: user.isLead };
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    isLead: user.isLead,
+    lastSeenAnnouncementsAt: user.lastSeenAnnouncementsAt,
+  };
 }

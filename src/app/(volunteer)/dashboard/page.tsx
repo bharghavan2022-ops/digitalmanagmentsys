@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { computeAchievements } from "@/lib/achievements";
+import { computeCategoryBreakdown } from "@/lib/category-breakdown";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function VolunteerDashboardPage() {
@@ -9,7 +11,7 @@ export default async function VolunteerDashboardPage() {
     include: {
       attendances: {
         where: { state: "VERIFIED_ATTENDED" },
-        include: { event: { select: { awardedHours: true } } },
+        include: { event: { select: { awardedHours: true, category: true } } },
       },
       registrations: {
         include: { event: true },
@@ -22,17 +24,38 @@ export default async function VolunteerDashboardPage() {
 
   const verifiedHours =
     volunteer?.attendances.reduce((sum, a) => sum + Number(a.event.awardedHours), 0) ?? 0;
+  const categoryBreakdown = computeCategoryBreakdown(
+    volunteer?.attendances.map((a) => ({
+      category: a.event.category,
+      hours: Number(a.event.awardedHours),
+    })) ?? [],
+  );
+  const achievements = computeAchievements({
+    verifiedHours,
+    verifiedAttendanceCount: volunteer?.attendances.length ?? 0,
+    isLead: user!.isLead,
+  });
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 p-8">
-      <h1 className="text-2xl font-semibold">Welcome back{volunteer ? `, ${volunteer.fullName}` : ""}</h1>
+      <h1 className="font-display text-2xl font-bold">
+        Welcome back{volunteer ? `, ${volunteer.fullName}` : ""}
+      </h1>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Verified hours</CardTitle>
           </CardHeader>
-          <CardContent className="text-3xl font-bold">{verifiedHours}</CardContent>
+          <CardContent className="text-3xl font-bold tabular-nums">{verifiedHours}</CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Events attended</CardTitle>
+          </CardHeader>
+          <CardContent className="text-3xl font-bold tabular-nums">
+            {volunteer?.attendances.length ?? 0}
+          </CardContent>
         </Card>
         <Card>
           <CardHeader>
@@ -41,6 +64,51 @@ export default async function VolunteerDashboardPage() {
           <CardContent className="text-lg">{volunteer?.status ?? "APPLIED"}</CardContent>
         </Card>
       </div>
+
+      {categoryBreakdown.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Hours by category</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-2">
+            {categoryBreakdown.map((entry) => (
+              <div key={entry.category} className="flex items-center gap-3 text-sm">
+                <span className="w-40 truncate">{entry.category}</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-success"
+                    style={{ width: `${entry.percent}%` }}
+                  />
+                </div>
+                <span className="w-24 text-right tabular-nums text-muted-foreground">
+                  {entry.hours}h ({entry.percent}%)
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Achievements</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-wrap gap-2">
+          {achievements.map((badge) => (
+            <span
+              key={badge.id}
+              title={badge.description}
+              className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                badge.unlocked
+                  ? "border-success-border bg-success-bg text-success-fg"
+                  : "border-border bg-muted text-muted-foreground"
+              }`}
+            >
+              {badge.label}
+            </span>
+          ))}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

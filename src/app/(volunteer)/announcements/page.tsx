@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { markAnnouncementsSeen } from "@/lib/announcements/mark-seen";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default async function VolunteerAnnouncementsPage() {
@@ -8,6 +9,7 @@ export default async function VolunteerAnnouncementsPage() {
     where: { OR: [{ audience: null }, { audience: user!.role }] },
     orderBy: { createdAt: "desc" },
   });
+  await markAnnouncementsSeen(user!.id);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-8">

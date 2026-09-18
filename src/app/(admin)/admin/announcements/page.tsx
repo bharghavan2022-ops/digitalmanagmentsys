@@ -1,11 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
+import { markAnnouncementsSeen } from "@/lib/announcements/mark-seen";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateAnnouncementForm } from "./create-announcement-form";
 
 export default async function AdminAnnouncementsPage() {
   const user = await getCurrentUser();
   const announcements = await prisma.announcement.findMany({ orderBy: { createdAt: "desc" } });
+  await markAnnouncementsSeen(user!.id);
 
   return (
     <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 p-8">

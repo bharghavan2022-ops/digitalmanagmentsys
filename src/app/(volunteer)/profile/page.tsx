@@ -2,6 +2,7 @@ import QRCode from "qrcode";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProfileEditForm } from "./profile-edit-form";
 
 export default async function ProfilePage() {
   const user = await getCurrentUser();
@@ -39,6 +40,25 @@ export default async function ProfilePage() {
             <dt className="text-muted-foreground">Status</dt>
             <dd>{volunteer.status}</dd>
           </dl>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Volunteer details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProfileEditForm
+            initial={{
+              phone: volunteer.phone,
+              bloodGroup: volunteer.bloodGroup ?? "",
+              emergencyContactName: volunteer.emergencyContactName ?? "",
+              emergencyContactPhone: volunteer.emergencyContactPhone ?? "",
+              hostelRoom: volunteer.hostelRoom ?? "",
+              languages: volunteer.languages ?? "",
+              skills: volunteer.skills ?? "",
+            }}
+          />
         </CardContent>
       </Card>
     </main>

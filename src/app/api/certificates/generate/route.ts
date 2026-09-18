@@ -7,6 +7,7 @@ import { generateCertificateSchema } from "@/lib/validators/certificate";
 import { computeVerificationHash } from "@/lib/certificates/hash";
 import { renderCertificatePdf } from "@/lib/certificates/generate";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { writeAuditLog } from "@/lib/audit/log";
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,24 +50,26 @@ export async function POST(request: NextRequest) {
       data: { publicUrl },
     } = supabaseAdmin.storage.from("certificates").getPublicUrl(storagePath);
 
-    const certificate = await prisma.certificate.create({
-      data: {
-        certificateNo,
-        volunteerId: volunteer.id,
-        eventId: event?.id,
-        verificationHash,
-        pdfUrl: publicUrl,
-      },
-    });
+    const certificate = await prisma.$transaction(async (tx) => {
+      const record = await tx.certificate.create({
+        data: {
+          certificateNo,
+          volunteerId: volunteer.id,
+          eventId: event?.id,
+          verificationHash,
+          pdfUrl: publicUrl,
+        },
+      });
 
-    await prisma.auditLog.create({
-      data: {
+      await writeAuditLog(tx, {
         userId: admin.id,
         action: "CERTIFICATE_ISSUED",
         resourceType: "Certificate",
-        resourceId: certificate.id,
+        resourceId: record.id,
         stateDiff: { volunteerId: volunteer.id, eventId: event?.id ?? null },
-      },
+      });
+
+      return record;
     });
 
     return NextResponse.json(certificate, { status: 201 });

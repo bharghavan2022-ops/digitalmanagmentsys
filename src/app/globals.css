@@ -2,50 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Palette from the NSS Connect design system (docs come with the Stitch UI
+ * export) - institutional navy primary, amber accent for volunteer/action
+ * moments, emerald for verified/compliant states. Converted to HSL for
+ * shadcn's CSS-variable convention; see docs/ARCHITECTURE.md for how these
+ * map onto components.
+ */
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --background: 210 40% 98%;
+    --foreground: 222 47% 11%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 222 47% 11%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
-    --primary: 240 5.9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 5.9% 10%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 209 63% 16%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 32 95% 44%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 75% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 213 27% 84%;
+    --ring: 209 63% 16%;
     --radius: 0.5rem;
+
+    --success: 161 94% 30%;
+    --success-foreground: 0 0% 100%;
+    --success-bg: 152 81% 96%;
+    --success-border: 152 76% 80%;
+    --success-fg: 163 88% 20%;
+    --warning-bg: 48 96% 89%;
+    --warning-border: 48 97% 77%;
+    --warning-fg: 23 82% 31%;
   }
 
   .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
+    --background: 222 47% 8%;
+    --foreground: 210 40% 96%;
+    --card: 222 40% 11%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 40% 11%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 213 60% 68%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 32 90% 55%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 96%;
+    --destructive: 0 63% 42%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 217 33% 20%;
+    --input: 217 33% 20%;
+    --ring: 213 60% 68%;
+
+    --success: 161 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --success-bg: 163 40% 14%;
+    --success-border: 161 50% 30%;
+    --success-fg: 152 76% 80%;
+    --warning-bg: 32 40% 16%;
+    --warning-border: 32 60% 30%;
+    --warning-fg: 48 90% 75%;
   }
 }
 

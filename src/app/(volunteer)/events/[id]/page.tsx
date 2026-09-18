@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { RegisterButton } from "./register-button";
 import { FeedbackForm } from "./feedback-form";
 
@@ -57,6 +58,11 @@ export default async function EventDetailPage({ params }: { params: { id: string
             isFull={isFull}
             canCancel={attendance?.state !== "VERIFIED_ATTENDED"}
           />
+          {existingRegistration && !existingRegistration.waitlisted && (
+            <Button asChild variant="outline" size="sm" className="w-fit">
+              <a href={`/api/events/${event.id}/gate-pass`}>Download Gate Pass</a>
+            </Button>
+          )}
         </CardContent>
       </Card>
 

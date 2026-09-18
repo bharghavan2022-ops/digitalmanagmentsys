@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/session";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RegisterButton } from "./register-button";
+import { FeedbackForm } from "./feedback-form";
 
 export default async function EventDetailPage({ params }: { params: { id: string } }) {
   const user = await getCurrentUser();
@@ -15,6 +16,17 @@ export default async function EventDetailPage({ params }: { params: { id: string
   const volunteer = await prisma.volunteerProfile.findUnique({ where: { userId: user!.id } });
   const existingRegistration = volunteer
     ? await prisma.eventRegistration.findUnique({
+        where: { eventId_volunteerId: { eventId: event.id, volunteerId: volunteer.id } },
+      })
+    : null;
+
+  const attendance = volunteer
+    ? await prisma.attendance.findUnique({
+        where: { eventId_volunteerId: { eventId: event.id, volunteerId: volunteer.id } },
+      })
+    : null;
+  const existingFeedback = volunteer
+    ? await prisma.feedback.findUnique({
         where: { eventId_volunteerId: { eventId: event.id, volunteerId: volunteer.id } },
       })
     : null;
@@ -46,6 +58,21 @@ export default async function EventDetailPage({ params }: { params: { id: string
           />
         </CardContent>
       </Card>
+
+      {attendance?.state === "VERIFIED_ATTENDED" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Feedback</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FeedbackForm
+              eventId={event.id}
+              existingRating={existingFeedback?.rating ?? null}
+              existingMessage={existingFeedback?.message ?? null}
+            />
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }

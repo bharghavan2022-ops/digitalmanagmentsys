@@ -59,6 +59,7 @@ model VolunteerProfile {
   registrations    EventRegistration[]
   attendances      Attendance[]
   certificates     Certificate[]
+  feedback         Feedback[]
   createdAt        DateTime @default(now())
 }
 
@@ -79,6 +80,7 @@ model Event {
   registrations EventRegistration[]
   attendances   Attendance[]
   certificates  Certificate[]
+  feedback      Feedback[]
   createdAt     DateTime @default(now())
 
   @@index([startTime])
@@ -133,6 +135,19 @@ model Announcement {
   audience    AppRole?
   createdById String
   createdAt   DateTime @default(now())
+}
+
+model Feedback {
+  id          String   @id @default(uuid())
+  volunteerId String
+  volunteer   VolunteerProfile @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  rating      Int
+  message     String?
+  createdAt   DateTime @default(now())
+
+  @@unique([eventId, volunteerId])
 }
 
 model AuditLog {

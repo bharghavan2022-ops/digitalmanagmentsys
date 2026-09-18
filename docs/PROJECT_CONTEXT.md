@@ -71,7 +71,9 @@ The original research chat spec'd a heavier architecture: separate NestJS/Fastif
 
 ## 4. Database Schema (Prisma, consolidated)
 
-See `prisma/schema.prisma` — kept in sync with this section as the build progresses. Enums: `AppRole`, `VolunteerStatus`, `EventStatus`, `AttendanceState`. Models: `User`, `VolunteerProfile`, `Event`, `EventRegistration`, `Attendance`, `Certificate`, `Announcement`, `AuditLog`.
+See `prisma/schema.prisma` — kept in sync with this section as the build progresses. Enums: `AppRole`, `VolunteerStatus`, `EventStatus`, `AttendanceState`. Models: `User`, `VolunteerProfile`, `Event`, `EventRegistration`, `Attendance`, `Certificate`, `Announcement`, `Feedback`, `AuditLog`.
+
+`Feedback` (added, resolving open decision #3): one rating (1-5) + optional free-text message per volunteer per event, gated on `Attendance.state = VERIFIED_ATTENDED` for that event/volunteer pair - you can't leave feedback for an event you didn't actually attend. `@@unique([eventId, volunteerId])` caps it at one submission each. `POST /api/feedback` (volunteer) and `GET /api/feedback` (COORDINATOR/AUDITOR) in `src/app/api/feedback/route.ts`.
 
 **Rules baked into this schema for Claude Code to respect:**
 - `totalHoursServed` is a cached aggregate, never hand-incremented. It is recalculated from `Attendance` rows where `state = VERIFIED_ATTENDED`, joined to `Event.awardedHours`. Treat direct writes to this field as a bug.
@@ -100,7 +102,7 @@ Unchanged from the original context — see the project's chat history for the f
 
 1. **App name:** "NSS Connect" is a placeholder — used throughout the scaffold (page titles, metadata). Confirm or rename.
 2. **Geolocation strictness:** current scaffold treats geo as advisory (recorded on `Attendance.geoDistanceMeters`, never blocks check-in). Confirm this is still the intended behavior.
-3. **Feedback model:** not yet added to `prisma/schema.prisma`. Confirm scope before adding.
+3. ~~**Feedback model:** not yet added to `prisma/schema.prisma`. Confirm scope before adding.~~ Resolved: added (see §4) as a minimal one-rating-per-attended-event model. Revisit if the intended scope was broader (e.g. multi-question surveys).
 4. **NAAC/NIRF-formatted PDF export:** only a CSV export exists so far (`/api/reports/export`). Confirm whether a formatted PDF export is required for the submission deadline.
 5. **Team size:** scaffold assumes solo/small-team execution against the Recommended Track.
 

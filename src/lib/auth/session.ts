@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import type { AppRole } from "@prisma/client";
+import { createVolunteerSchema } from "@/lib/validators/volunteer";
 
 export type SessionUser = {
   id: string;
@@ -32,6 +33,35 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     update: {},
     create: { id: authUser.id, email: authUser.email },
   });
+
+  // The register page submits the volunteer's profile fields as Supabase
+  // auth user metadata rather than creating the profile directly, because
+  // Supabase can require email confirmation before a session exists - the
+  // authenticated POST /api/volunteers call would fail with no session to
+  // send. Once a session does exist (first request after sign-up or after
+  // confirming), create the missing profile from that metadata here.
+  if (user.role === "VOLUNTEER") {
+    const hasProfile = await prisma.volunteerProfile.findUnique({
+      where: { userId: user.id },
+      select: { id: true },
+    });
+    if (!hasProfile) {
+      const parsed = createVolunteerSchema.safeParse(authUser.user_metadata);
+      if (parsed.success) {
+        await prisma.volunteerProfile.create({
+          data: {
+            userId: user.id,
+            nssId: `PENDING-${user.id.slice(0, 8)}`,
+            fullName: parsed.data.fullName,
+            phone: parsed.data.phone,
+            department: parsed.data.department,
+            yearOfStudy: parsed.data.yearOfStudy,
+            status: "APPLIED",
+          },
+        });
+      }
+    }
+  }
 
   return {
     id: user.id,

@@ -26,10 +26,15 @@ export async function sendAnnouncementEmail(params: {
   const resend = getClient();
   if (!resend || params.recipients.length === 0) return;
 
+  // Resend rejects any sender address at resend.dev other than exactly
+  // onboarding@resend.dev unless a custom domain is verified in the Resend
+  // dashboard - set RESEND_FROM_EMAIL once you've verified one.
+  const from = process.env.RESEND_FROM_EMAIL || "NSS Connect <onboarding@resend.dev>";
+
   const results = await Promise.allSettled(
     params.recipients.map((to) =>
       resend.emails.send({
-        from: "NSS Connect <notifications@resend.dev>",
+        from,
         to,
         subject: params.title,
         text: params.body,

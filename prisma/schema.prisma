@@ -36,31 +36,38 @@ enum AttendanceState {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  role      AppRole  @default(VOLUNTEER)
-  isLead    Boolean  @default(false)
-  createdAt DateTime @default(now())
-  volunteer VolunteerProfile?
+  id                       String    @id @default(uuid())
+  email                    String    @unique
+  role                     AppRole   @default(VOLUNTEER)
+  isLead                   Boolean   @default(false)
+  lastSeenAnnouncementsAt  DateTime?
+  createdAt                DateTime  @default(now())
+  volunteer                VolunteerProfile?
 }
 
 model VolunteerProfile {
-  id               String   @id @default(uuid())
-  userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nssId            String   @unique
-  fullName         String
-  phone            String
-  department       String
-  yearOfStudy      Int
-  status           VolunteerStatus @default(APPLIED)
-  totalHoursServed Decimal  @default(0)
-  avatarUrl        String?
-  registrations    EventRegistration[]
-  attendances      Attendance[]
-  certificates     Certificate[]
-  feedback         Feedback[]
-  createdAt        DateTime @default(now())
+  id                    String   @id @default(uuid())
+  userId                String   @unique
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nssId                 String   @unique
+  fullName              String
+  phone                 String
+  department            String
+  yearOfStudy           Int
+  status                VolunteerStatus @default(APPLIED)
+  totalHoursServed      Decimal  @default(0)
+  avatarUrl             String?
+  bloodGroup            String?
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  hostelRoom            String?
+  languages             String?
+  skills                String?
+  registrations         EventRegistration[]
+  attendances           Attendance[]
+  certificates          Certificate[]
+  feedback              Feedback[]
+  createdAt             DateTime @default(now())
 }
 
 model Event {
@@ -150,13 +157,23 @@ model Feedback {
   @@unique([eventId, volunteerId])
 }
 
+// Tamper-evident, not blockchain: each row's `hash` covers its own fields
+// plus the previous row's `hash`, so editing or deleting a historical row
+// breaks every hash after it. `sequence` gives a gap-free, strictly
+// increasing chain order that createdAt (not unique, clock-adjustable)
+// can't guarantee. See src/lib/audit/log.ts for how the chain is built.
 model AuditLog {
   id           String   @id @default(uuid())
+  sequence     Int
   userId       String?
   action       String
   resourceType String
   resourceId   String
   stateDiff    Json?
   ipAddress    String?
+  previousHash String?
+  hash         String
   createdAt    DateTime @default(now())
+
+  @@unique([sequence])
 }

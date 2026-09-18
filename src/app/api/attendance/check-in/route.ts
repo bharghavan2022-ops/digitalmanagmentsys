@@ -6,6 +6,7 @@ import { toErrorResponse } from "@/lib/api/error-response";
 import { checkInSchema } from "@/lib/validators/attendance";
 import { verifyCheckInToken } from "@/lib/attendance/token";
 import { haversineDistanceMeters } from "@/lib/attendance/geo";
+import { writeAuditLog } from "@/lib/audit/log";
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,32 +45,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const attendance = await prisma.attendance.upsert({
-      where: { eventId_volunteerId: { eventId: event.id, volunteerId: volunteer.id } },
-      create: {
-        eventId: event.id,
-        volunteerId: volunteer.id,
-        state: "VERIFIED_ATTENDED",
-        checkedInAt: new Date(),
-        verifiedByUserId: user.id,
-        geoDistanceMeters,
-      },
-      update: {
-        state: "VERIFIED_ATTENDED",
-        checkedInAt: new Date(),
-        verifiedByUserId: user.id,
-        geoDistanceMeters,
-      },
-    });
+    const attendance = await prisma.$transaction(async (tx) => {
+      const record = await tx.attendance.upsert({
+        where: { eventId_volunteerId: { eventId: event.id, volunteerId: volunteer.id } },
+        create: {
+          eventId: event.id,
+          volunteerId: volunteer.id,
+          state: "VERIFIED_ATTENDED",
+          checkedInAt: new Date(),
+          verifiedByUserId: user.id,
+          geoDistanceMeters,
+        },
+        update: {
+          state: "VERIFIED_ATTENDED",
+          checkedInAt: new Date(),
+          verifiedByUserId: user.id,
+          geoDistanceMeters,
+        },
+      });
 
-    await prisma.auditLog.create({
-      data: {
+      await writeAuditLog(tx, {
         userId: user.id,
         action: "ATTENDANCE_VERIFIED",
         resourceType: "Attendance",
-        resourceId: attendance.id,
+        resourceId: record.id,
         stateDiff: { eventId: event.id, volunteerId: volunteer.id, geoDistanceMeters },
-      },
+      });
+
+      return record;
     });
 
     return NextResponse.json(attendance);

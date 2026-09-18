@@ -206,6 +206,7 @@ erDiagram
         string email UK
         enum role "VOLUNTEER default | COORDINATOR | AUDITOR"
         boolean isLead "unlocks check-in token issuance for VOLUNTEERs"
+        datetime lastSeenAnnouncementsAt "nullable; unread badge = createdAt > this"
         datetime createdAt
     }
     VOLUNTEER_PROFILE {
@@ -219,6 +220,12 @@ erDiagram
         enum status "APPLIED default | ACTIVE | INACTIVE | ALUMNI"
         decimal totalHoursServed "cached; source of truth is Attendance, never hand-set"
         string avatarUrl "nullable"
+        string bloodGroup "nullable, self-editable via PATCH /api/volunteers/me"
+        string emergencyContactName "nullable, self-editable"
+        string emergencyContactPhone "nullable, self-editable"
+        string hostelRoom "nullable, self-editable"
+        string languages "nullable, self-editable"
+        string skills "nullable, self-editable"
         datetime createdAt
     }
     EVENT {
@@ -281,11 +288,14 @@ erDiagram
     }
     AUDIT_LOG {
         string id PK
+        int sequence UK "gap-free chain order; see src/lib/audit/log.ts"
         string userId "soft ref to User.id, nullable"
         string action "e.g. ATTENDANCE_VERIFIED, CERTIFICATE_ISSUED, VOLUNTEER_UPDATED"
         string resourceType
         string resourceId
         json stateDiff "nullable"
+        string previousHash "nullable; this chain's previous row's hash"
+        string hash "sha256 of this row's fields + previousHash - tamper-evident, not blockchain"
         string ipAddress "nullable, not currently populated"
         datetime createdAt
     }
@@ -310,14 +320,14 @@ Ties the ten required modules (per `PROJECT_CONTEXT.md` §1/§7) to what actuall
 | Module | Frontend | API | Database |
 | :--- | :--- | :--- | :--- |
 | 1. Dashboard | `/dashboard`, `/admin/dashboard` | reads only, direct Prisma | `Attendance`, `Event`, `VolunteerProfile` |
-| 2. Volunteer Management | `/register`, `/profile`, `/admin/volunteers` | `POST /api/volunteers`, `GET/PATCH /api/volunteers/[id]`, `GET /api/volunteers` (paginated/filterable) | `User`, `VolunteerProfile` |
-| 3. Event Management | `/events`, `/events/[id]`, `/admin/events`, `/admin/events/create` | `GET/POST /api/events` (paginated/filterable), `GET/PATCH /api/events/[id]`, `POST/DELETE /api/events/[id]/register` | `Event`, `EventRegistration` |
+| 2. Volunteer Management | `/register`, `/profile`, `/admin/volunteers` | `POST /api/volunteers`, `GET/PATCH /api/volunteers/[id]` (admin), `GET/PATCH /api/volunteers/me` (self), `GET /api/volunteers` (paginated/filterable) | `User`, `VolunteerProfile` |
+| 3. Event Management | `/events`, `/events/[id]`, `/admin/events`, `/admin/events/create` | `GET/POST /api/events` (paginated/filterable), `GET/PATCH /api/events/[id]`, `POST/DELETE /api/events/[id]/register`, `GET /api/events/[id]/gate-pass` (PDF) | `Event`, `EventRegistration` |
 | 4. Attendance Management | `/attendance/scan`, `/admin/events/[id]/monitor` | `GET /api/events/[id]/token`, `POST /api/attendance/check-in` | `Attendance` |
-| 5. Achievements & Performance | `/dashboard` stats, `/admin/dashboard` | derived query (no dedicated route) | `Attendance` joined to `Event.awardedHours` |
-| 6. Certificates | `/certificates`, `/admin/certificates`, `/verify/[hash]` | `POST /api/certificates/generate`, `GET /api/certificates/verify/[hash]` (rate-limited) | `Certificate` |
-| 7. Communication | `/announcements`, `/admin/announcements`, feedback form on `/events/[id]`, `/admin/feedback` | `GET/POST /api/announcements` (+ best-effort Resend email), `GET/POST /api/feedback` | `Announcement`, `Feedback` |
+| 5. Achievements & Performance | `/dashboard` badges + category breakdown | derived in `lib/achievements.ts` / `lib/category-breakdown.ts` (no dedicated route - pure functions over data the dashboard already queries) | `Attendance` joined to `Event.awardedHours`/`category` |
+| 6. Certificates | `/certificates`, `/admin/certificates`, `/verify/[hash]` | `POST /api/certificates/generate`, `GET /api/certificates/verify/[hash]` (rate-limited), `GET /api/certificates/dossier` (ZIP of own certs) | `Certificate` |
+| 7. Communication | `/announcements`, `/admin/announcements`, feedback form on `/events/[id]`, `/admin/feedback` | `GET/POST /api/announcements` (+ best-effort Resend email), `POST /api/announcements/seen` (unread tracking), `GET/POST /api/feedback`, `GET /api/search` | `Announcement`, `Feedback`, `User.lastSeenAnnouncementsAt` |
 | 8. Officer/Admin Management | every `(admin)/admin/*` page | every route gated by `requireRole(["COORDINATOR", ...])`; AUDITOR gets read-only | n/a — cross-cutting via `lib/auth/rbac.ts` |
 | 9. NSS Activity & Impact | `/admin/dashboard`, `/admin/reports` | `GET /api/reports/export` (CSV) | aggregates across `VolunteerProfile`, `Event`, `Attendance` |
-| 10. Profile & Digital ID | `/profile` (QR via `qrcode`) | reuses volunteer profile data, no dedicated route | `VolunteerProfile` |
+| 10. Profile & Digital ID | `/profile` (QR via `qrcode`, extended fields, self-edit form) | `GET/PATCH /api/volunteers/me` | `VolunteerProfile` |
 
 `AuditLog` isn't in the table above because it's not user-facing — it's written by modules 4 (attendance verification), 6 (certificate issuance), 2 (volunteer approval/lead toggle), and 3 (event edits), per the guardrail in `PROJECT_CONTEXT.md` §8.

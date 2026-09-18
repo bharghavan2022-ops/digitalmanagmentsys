@@ -5,6 +5,7 @@ import { requireRole } from "@/lib/auth/rbac";
 import { toErrorResponse } from "@/lib/api/error-response";
 import { adminUpdateVolunteerSchema } from "@/lib/validators/volunteer";
 import { generateNssId } from "@/lib/volunteers/nss-id";
+import { writeAuditLog } from "@/lib/audit/log";
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
   try {
@@ -49,17 +50,15 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
         await tx.user.update({ where: { id: existing.userId }, data: { isLead: body.isLead } });
       }
 
-      return volunteer;
-    });
-
-    await prisma.auditLog.create({
-      data: {
+      await writeAuditLog(tx, {
         userId: admin.id,
         action: "VOLUNTEER_UPDATED",
         resourceType: "VolunteerProfile",
         resourceId: existing.id,
         stateDiff: body,
-      },
+      });
+
+      return volunteer;
     });
 
     return NextResponse.json(updated);

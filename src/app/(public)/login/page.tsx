@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Logo } from "@/components/shared/logo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -35,8 +36,9 @@ export default function LoginPage() {
   return (
     <main className="flex flex-1 items-center justify-center p-8">
       <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Log in to NSS Connect</CardTitle>
+        <CardHeader className="flex flex-col items-center gap-3">
+          <Logo />
+          <CardTitle>Log in</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">

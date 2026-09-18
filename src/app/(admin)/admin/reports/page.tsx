@@ -1,0 +1,20 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+export default function AdminReportsPage() {
+  return (
+    <main className="mx-auto flex w-full max-w-2xl flex-col gap-4 p-8">
+      <h1 className="text-2xl font-semibold">Reports</h1>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Volunteer hours roster (CSV)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <a href="/api/reports/export">Download CSV</a>
+          </Button>
+        </CardContent>
+      </Card>
+    </main>
+  );
+}

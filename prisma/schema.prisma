@@ -1,0 +1,147 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AppRole {
+  VOLUNTEER
+  COORDINATOR
+  AUDITOR
+}
+
+enum VolunteerStatus {
+  APPLIED
+  ACTIVE
+  INACTIVE
+  ALUMNI
+}
+
+enum EventStatus {
+  DRAFT
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum AttendanceState {
+  REGISTERED
+  CHECKED_IN
+  VERIFIED_ATTENDED
+  ABSENT
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  role      AppRole  @default(VOLUNTEER)
+  isLead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  volunteer VolunteerProfile?
+}
+
+model VolunteerProfile {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nssId            String   @unique
+  fullName         String
+  phone            String
+  department       String
+  yearOfStudy      Int
+  status           VolunteerStatus @default(APPLIED)
+  totalHoursServed Decimal  @default(0)
+  avatarUrl        String?
+  registrations    EventRegistration[]
+  attendances      Attendance[]
+  certificates     Certificate[]
+  createdAt        DateTime @default(now())
+}
+
+model Event {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  category      String
+  venueName     String
+  latitude      Float?
+  longitude     Float?
+  startTime     DateTime
+  endTime       DateTime
+  awardedHours  Decimal
+  maxCapacity   Int?
+  status        EventStatus @default(DRAFT)
+  createdById   String
+  registrations EventRegistration[]
+  attendances   Attendance[]
+  certificates  Certificate[]
+  createdAt     DateTime @default(now())
+
+  @@index([startTime])
+}
+
+model EventRegistration {
+  id           String   @id @default(uuid())
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  volunteerId  String
+  volunteer    VolunteerProfile @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  registeredAt DateTime @default(now())
+  waitlisted   Boolean  @default(false)
+
+  @@unique([eventId, volunteerId])
+}
+
+model Attendance {
+  id                String   @id @default(uuid())
+  eventId           String
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  volunteerId       String
+  volunteer         VolunteerProfile @relation(fields: [volunteerId], references: [id], onDelete: Cascade)
+  state             AttendanceState @default(REGISTERED)
+  checkedInAt       DateTime?
+  verifiedByUserId  String?
+  geoDistanceMeters Float?
+  createdAt         DateTime @default(now())
+
+  @@unique([eventId, volunteerId])
+  @@index([volunteerId])
+}
+
+model Certificate {
+  id               String   @id @default(uuid())
+  certificateNo    String   @unique
+  volunteerId      String
+  volunteer        VolunteerProfile @relation(fields: [volunteerId], references: [id])
+  eventId          String?
+  event            Event?   @relation(fields: [eventId], references: [id])
+  verificationHash String   @unique
+  pdfUrl           String
+  issuedAt         DateTime @default(now())
+
+  @@index([verificationHash])
+}
+
+model Announcement {
+  id          String   @id @default(uuid())
+  title       String
+  body        String
+  audience    AppRole?
+  createdById String
+  createdAt   DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String?
+  action       String
+  resourceType String
+  resourceId   String
+  stateDiff    Json?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+}

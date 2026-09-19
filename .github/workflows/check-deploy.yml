@@ -10,6 +10,16 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
       - name: Curl /login
         run: |
           echo "--- GET /login status ---"
@@ -35,3 +45,22 @@ jobs:
         run: |
           echo "--- GET /post-login (no auth) status + redirect target ---"
           curl -sS -o /dev/null -w "status=%{http_code} redirect_url=%{redirect_url}\n" https://digitalmanagmentsys.vercel.app/post-login
+
+      - name: Check the Digital ID QR link (/verify/profile/[id]) actually resolves
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node -e "
+          const { PrismaClient } = require('@prisma/client');
+          const prisma = new PrismaClient();
+          prisma.volunteerProfile.findFirst({ where: { fullName: 'Aditya Kumar' } })
+            .then((v) => { if (!v) throw new Error('seeded volunteer not found'); console.log(v.id); })
+            .finally(() => prisma.\$disconnect());
+          " > volunteer_id.txt
+          VOLUNTEER_ID=$(cat volunteer_id.txt)
+          echo "Testing /verify/profile/$VOLUNTEER_ID"
+          curl -sS -o profile_card.html -w "status=%{http_code}\n" "https://digitalmanagmentsys.vercel.app/verify/profile/$VOLUNTEER_ID"
+          echo "--- Contains volunteer name? ---"
+          grep -o "Aditya Kumar" profile_card.html || echo "NOT FOUND"
+          echo "--- Leaks email anywhere? (should be empty) ---"
+          grep -o "nssdemo.local" profile_card.html || echo "(none found - correct)"

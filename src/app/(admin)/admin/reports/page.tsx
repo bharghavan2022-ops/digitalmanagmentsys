@@ -7,11 +7,14 @@ export default function AdminReportsPage() {
       <h1 className="text-2xl font-semibold">Reports</h1>
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Volunteer hours roster (CSV)</CardTitle>
+          <CardTitle className="text-base">Volunteer hours roster</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex gap-3">
           <Button asChild>
             <a href="/api/reports/export">Download CSV</a>
+          </Button>
+          <Button asChild variant="outline">
+            <a href="/api/reports/export?format=xlsx">Download XLSX</a>
           </Button>
         </CardContent>
       </Card>

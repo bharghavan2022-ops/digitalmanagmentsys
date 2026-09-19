@@ -17,10 +17,17 @@ export type SessionUser = {
  * yet - callers decide how to handle that (redirect vs. 401).
  */
 export async function getCurrentUser(): Promise<SessionUser | null> {
-  const supabase = createClient();
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
+  let authUser;
+  try {
+    const supabase = createClient();
+    authUser = (await supabase.auth.getUser()).data.user;
+  } catch (error) {
+    // Every page that gates on a user (layouts, API routes via requireRole)
+    // calls this - letting a Supabase client error escape here would crash
+    // the whole page instead of just treating the visitor as signed out.
+    console.error({ operation: "session.getCurrentUser", error });
+    return null;
+  }
 
   if (!authUser || !authUser.email) return null;
 

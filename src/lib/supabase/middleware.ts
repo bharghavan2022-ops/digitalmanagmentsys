@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { ensureWebSocketShim } from "./websocket-shim";
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -21,6 +22,8 @@ export async function updateSession(request: NextRequest) {
     });
     return response;
   }
+
+  ensureWebSocketShim();
 
   try {
     const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {

@@ -1,7 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { ensureWebSocketShim } from "./websocket-shim";
 
 export function createClient() {
+  ensureWebSocketShim();
   const cookieStore = cookies();
 
   return createServerClient(

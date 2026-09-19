@@ -19,6 +19,11 @@ jobs:
 
       - run: npm ci
 
-      - run: npx prisma migrate diff --from-url "$DIRECT_URL" --to-schema-datamodel prisma/schema.prisma --script
+      # DIRECT_URL (Supabase's non-pooled port 5432) needs IPv6, which
+      # GitHub's runners don't have - it fails with P1001 (can't reach
+      # server). DATABASE_URL (the pooled connection) works over IPv4 and
+      # is what the app itself actually queries through, so it's the
+      # correct one to diff against anyway.
+      - run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --script
         env:
-          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

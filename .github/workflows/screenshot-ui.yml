@@ -21,20 +21,38 @@ jobs:
 
       - run: npx playwright install --with-deps chromium
 
-      - name: Log in and capture screenshots
+      - name: Log in and capture screenshots (with diagnostics)
         run: |
           node -e "
           const { chromium } = require('@playwright/test');
           (async () => {
             const browser = await chromium.launch({ args: ['--no-sandbox'] });
             const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+            page.on('console', (msg) => console.log('BROWSER-CONSOLE[' + msg.type() + ']:', msg.text()));
+            page.on('pageerror', (err) => console.log('BROWSER-PAGEERROR:', err.message));
+            page.on('response', (res) => {
+              if (res.status() >= 400) console.log('HTTP-' + res.status() + ':', res.url());
+            });
 
             await page.goto('https://digitalmanagmentsys.vercel.app/login', { waitUntil: 'networkidle' });
+            const buildId = await page.evaluate(() => {
+              const m = document.documentElement.innerHTML.match(/\"buildId\":\"([^\"]+)\"/);
+              return m ? m[1] : 'NOT FOUND';
+            });
+            console.log('LIVE-BUILD-ID:', buildId);
+            await page.screenshot({ path: 'login-page.png' });
+
             await page.fill('#email', 'admin.priya@nssdemo.local');
             await page.fill('#password', 'NssDemo#2026');
             await page.click('button[type=submit]');
-            await page.waitForURL('**/admin/dashboard', { timeout: 20000 });
-            await page.waitForLoadState('networkidle');
+
+            try {
+              await page.waitForURL('**/admin/dashboard', { timeout: 30000 });
+              console.log('REDIRECT-OK: reached', page.url());
+            } catch (e) {
+              console.log('REDIRECT-TIMEOUT: current URL is', page.url());
+              console.log('PAGE-TEXT-SNIPPET:', (await page.textContent('body')).slice(0, 500));
+            }
             await page.screenshot({ path: 'admin-dashboard.png' });
 
             await page.goto('https://digitalmanagmentsys.vercel.app/admin/volunteers', { waitUntil: 'networkidle' });
@@ -45,17 +63,24 @@ jobs:
           "
 
       - name: Base64-encode screenshots for log capture
+        if: always()
         run: |
+          echo '===LOGIN-BASE64-START==='
+          base64 -w 200 login-page.png || true
+          echo '===LOGIN-BASE64-END==='
           echo '===DASHBOARD-BASE64-START==='
-          base64 -w 200 admin-dashboard.png
+          base64 -w 200 admin-dashboard.png || true
           echo '===DASHBOARD-BASE64-END==='
           echo '===VOLUNTEERS-BASE64-START==='
-          base64 -w 200 admin-volunteers.png
+          base64 -w 200 admin-volunteers.png || true
           echo '===VOLUNTEERS-BASE64-END==='
 
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: ui-screenshots
           path: |
+            login-page.png
             admin-dashboard.png
             admin-volunteers.png
+          if-no-files-found: ignore

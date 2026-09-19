@@ -24,6 +24,8 @@ jobs:
         run: |
           echo "--- GET /login status ---"
           curl -sS -o response.html -w "%{http_code}\n" https://digitalmanagmentsys.vercel.app/login
+          echo "--- Live buildId (changes every successful deploy - compare across runs) ---"
+          grep -oE '"buildId":"[^"]+"' response.html || echo "buildId not found in HTML"
           echo "--- Response body (first 60 lines) ---"
           head -n 60 response.html
 

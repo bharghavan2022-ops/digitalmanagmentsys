@@ -1,0 +1,61 @@
+name: Screenshot live internal UI
+
+# Manual only, read-only against the app (it does sign in, but never
+# mutates data): logs in as a seeded demo account on the real deployment
+# and screenshots a few authenticated pages, since the usual dev sandbox
+# has no network path to Supabase or vercel.app to do this itself.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npx playwright install --with-deps chromium
+
+      - name: Log in and capture screenshots
+        run: |
+          node -e "
+          const { chromium } = require('@playwright/test');
+          (async () => {
+            const browser = await chromium.launch({ args: ['--no-sandbox'] });
+            const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+
+            await page.goto('https://digitalmanagmentsys.vercel.app/login', { waitUntil: 'networkidle' });
+            await page.fill('#email', 'admin.priya@nssdemo.local');
+            await page.fill('#password', 'NssDemo#2026');
+            await page.click('button[type=submit]');
+            await page.waitForURL('**/admin/dashboard', { timeout: 20000 });
+            await page.waitForLoadState('networkidle');
+            await page.screenshot({ path: 'admin-dashboard.png' });
+
+            await page.goto('https://digitalmanagmentsys.vercel.app/admin/volunteers', { waitUntil: 'networkidle' });
+            await page.screenshot({ path: 'admin-volunteers.png' });
+
+            await browser.close();
+          })().catch((e) => { console.error(e); process.exit(1); });
+          "
+
+      - name: Base64-encode screenshots for log capture
+        run: |
+          echo '===DASHBOARD-BASE64-START==='
+          base64 -w 200 admin-dashboard.png
+          echo '===DASHBOARD-BASE64-END==='
+          echo '===VOLUNTEERS-BASE64-START==='
+          base64 -w 200 admin-volunteers.png
+          echo '===VOLUNTEERS-BASE64-END==='
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ui-screenshots
+          path: |
+            admin-dashboard.png
+            admin-volunteers.png

@@ -12,7 +12,26 @@ jobs:
     steps:
       - name: Curl /login
         run: |
-          echo "--- HTTP status ---"
+          echo "--- GET /login status ---"
           curl -sS -o response.html -w "%{http_code}\n" https://digitalmanagmentsys.vercel.app/login
-          echo "--- Response body (first 200 lines) ---"
-          head -n 200 response.html
+          echo "--- Response body (first 60 lines) ---"
+          head -n 60 response.html
+
+      - name: Sign in as a seeded demo account against Supabase Auth directly
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        run: |
+          echo "--- Auth token grant status ---"
+          curl -sS -X POST "$NEXT_PUBLIC_SUPABASE_URL/auth/v1/token?grant_type=password" \
+            -H "apikey: $NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"email":"admin.priya@nssdemo.local","password":"NssDemo#2026"}' \
+            -o auth_response.json -w "%{http_code}\n"
+          echo "--- Auth response (access_token redacted) ---"
+          sed 's/"access_token":"[^"]*"/"access_token":"<redacted>"/;s/"refresh_token":"[^"]*"/"refresh_token":"<redacted>"/' auth_response.json
+
+      - name: Check /post-login redirects rather than crashing when unauthenticated
+        run: |
+          echo "--- GET /post-login (no auth) status + redirect target ---"
+          curl -sS -o /dev/null -w "status=%{http_code} redirect_url=%{redirect_url}\n" https://digitalmanagmentsys.vercel.app/post-login

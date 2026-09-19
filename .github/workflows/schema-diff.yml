@@ -1,0 +1,24 @@
+name: Show schema drift
+
+# Manual only, read-only: prisma migrate diff never writes to the database,
+# it only compares prisma/schema.prisma against the live schema and prints
+# the exact SQL needed to close any gap. Useful whenever a Prisma error like
+# "column X does not exist" suggests a migration was never actually applied.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - run: npx prisma migrate diff --from-url "$DIRECT_URL" --to-schema-datamodel prisma/schema.prisma --script
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}

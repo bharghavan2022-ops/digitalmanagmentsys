@@ -1,0 +1,18 @@
+name: Check live deployment
+
+# Manual only, read-only: curls the live site to check its current status
+# and response body, since this repo's usual dev sandbox has no network
+# access to vercel.app.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Curl /login
+        run: |
+          echo "--- HTTP status ---"
+          curl -sS -o response.html -w "%{http_code}\n" https://digitalmanagmentsys.vercel.app/login
+          echo "--- Response body (first 200 lines) ---"
+          head -n 200 response.html

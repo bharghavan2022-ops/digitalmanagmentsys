@@ -15,22 +15,42 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState<string | null>(null);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setLoading(true);
     setError(null);
+    setUnconfirmedEmail(null);
+    setResendState("idle");
 
     const supabase = createClient();
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
 
     setLoading(false);
     if (signInError) {
-      setError(signInError.message);
+      // Supabase's own message here ("Email not confirmed") leaves someone
+      // stuck with no way forward if their original confirmation email
+      // never arrived or expired - offer to resend it instead of just
+      // showing that message.
+      if (signInError.message.toLowerCase().includes("confirm")) {
+        setUnconfirmedEmail(email);
+      } else {
+        setError(signInError.message);
+      }
       return;
     }
     router.push("/post-login");
     router.refresh();
+  }
+
+  async function handleResend() {
+    if (!unconfirmedEmail) return;
+    setResendState("sending");
+    const supabase = createClient();
+    await supabase.auth.resend({ type: "signup", email: unconfirmedEmail });
+    setResendState("sent");
   }
 
   return (
@@ -63,6 +83,23 @@ export default function LoginPage() {
               />
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
+            {unconfirmedEmail && (
+              <div className="text-sm text-destructive">
+                <p>Confirm your email before logging in.</p>
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resendState !== "idle"}
+                  className="underline underline-offset-2 disabled:no-underline"
+                >
+                  {resendState === "sent"
+                    ? "Confirmation email resent"
+                    : resendState === "sending"
+                      ? "Resending..."
+                      : "Resend confirmation email"}
+                </button>
+              </div>
+            )}
             <Button type="submit" disabled={loading}>
               {loading ? "Signing in..." : "Sign in"}
             </Button>

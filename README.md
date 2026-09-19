@@ -49,7 +49,24 @@ See [`docs/PROJECT_CONTEXT.md`](docs/PROJECT_CONTEXT.md) for the original plan a
 | `npm run prisma:generate` | Regenerate the Prisma client |
 | `npm run prisma:migrate` | Create/apply a dev migration |
 | `npm run db:push` | Push `prisma/schema.prisma` without a migration (quick local setup) |
-| `npm run prisma:seed` | Seed a sample coordinator + volunteer |
+| `npm run prisma:seed` | Seed 3 admin (2 coordinator, 1 auditor) + 10 volunteer demo accounts that can actually log in (see below) |
+
+## Demo accounts
+
+`npm run prisma:seed` creates real, pre-confirmed Supabase Auth users (not just
+Prisma rows — a `User` row with no matching `auth.users` entry can never log
+in) for 3 admins and 10 volunteers, all sharing one password. Needs
+`NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env`. Safe to
+re-run; it skips accounts and profiles that already exist.
+
+- Password for every seeded account: `NssDemo#2026` (override with
+  `DEMO_SEED_PASSWORD` in `.env`)
+- Admins: `admin.priya@nssdemo.local`, `admin.arun@nssdemo.local` (coordinators,
+  full access), `auditor.meera@nssdemo.local` (auditor, read-only)
+- Volunteers: `v.aditya@nssdemo.local` through `v.lakshmi@nssdemo.local` (see
+  `prisma/seed.ts` for the full list) — a mix of `ACTIVE`, `APPLIED`,
+  `ALUMNI`, and `INACTIVE` statuses so the admin approval workflow has
+  something to demo
 
 ## Roles
 

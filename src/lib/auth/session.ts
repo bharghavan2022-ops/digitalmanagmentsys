@@ -22,6 +22,17 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
     const supabase = createClient();
     authUser = (await supabase.auth.getUser()).data.user;
   } catch (error) {
+    // cookies() (called inside createClient()) deliberately throws a
+    // special error during static generation so Next.js can detect that a
+    // page needs dynamic rendering - swallowing it here breaks that
+    // detection and fails the production build outright (every page using
+    // getCurrentUser() gets prerendered as if it had no dynamic data, then
+    // errors for real reasons once it does). Let that one propagate; only
+    // genuine runtime errors (e.g. the Supabase client construction
+    // failure this catch exists for) get treated as "not signed in".
+    if ((error as { digest?: string } | undefined)?.digest === "DYNAMIC_SERVER_USAGE") {
+      throw error;
+    }
     // Every page that gates on a user (layouts, API routes via requireRole)
     // calls this - letting a Supabase client error escape here would crash
     // the whole page instead of just treating the visitor as signed out.

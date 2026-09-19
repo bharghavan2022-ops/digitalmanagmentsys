@@ -163,4 +163,23 @@ describe("getCurrentUser", () => {
     await expect(getCurrentUser()).resolves.toBeNull();
     expect(console.error).toHaveBeenCalled();
   });
+
+  it("re-throws Next.js's DYNAMIC_SERVER_USAGE signal instead of swallowing it", async () => {
+    // Regression test for a real incident: cookies() (inside createClient())
+    // throws this specific error during static generation so Next.js can
+    // mark the page dynamic. Swallowing it here - even with good intentions
+    // - hides that signal from Next, so it attempts full static generation
+    // anyway and the build fails for real reasons once it does. `next build`
+    // exits 0 only when this propagates untouched.
+    const dynamicError = new Error("Dynamic server usage");
+    (dynamicError as { digest?: string }).digest = "DYNAMIC_SERVER_USAGE";
+    mocks.createClient.mockImplementation(() => {
+      throw dynamicError;
+    });
+
+    const { getCurrentUser } = await import("@/lib/auth/session");
+
+    await expect(getCurrentUser()).rejects.toBe(dynamicError);
+    expect(console.error).not.toHaveBeenCalled();
+  });
 });

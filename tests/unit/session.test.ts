@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   getUser: vi.fn(),
+  createClient: vi.fn(),
   prisma: {
     user: { upsert: vi.fn() },
     volunteerProfile: { findUnique: vi.fn(), create: vi.fn() },
@@ -9,12 +10,14 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/supabase/server", () => ({
-  createClient: () => ({ auth: { getUser: mocks.getUser } }),
+  createClient: mocks.createClient,
 }));
 vi.mock("@/lib/prisma", () => ({ prisma: mocks.prisma }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  mocks.createClient.mockReturnValue({ auth: { getUser: mocks.getUser } });
 });
 
 describe("getCurrentUser", () => {
@@ -133,5 +136,31 @@ describe("getCurrentUser", () => {
 
     expect(mocks.prisma.volunteerProfile.findUnique).not.toHaveBeenCalled();
     expect(mocks.prisma.volunteerProfile.create).not.toHaveBeenCalled();
+  });
+
+  it("treats the visitor as signed out instead of crashing when the Supabase client throws", async () => {
+    // Reproduces a real incident: @supabase/supabase-js's realtime client
+    // throws synchronously during construction on a Node runtime with no
+    // native WebSocket global (Node <22) - every layout and API route calls
+    // getCurrentUser(), so an uncaught throw here took down every page.
+    mocks.createClient.mockImplementation(() => {
+      throw new Error("Node.js detected but native WebSocket not found.");
+    });
+
+    const { getCurrentUser } = await import("@/lib/auth/session");
+
+    await expect(getCurrentUser()).resolves.toBeNull();
+    expect(console.error).toHaveBeenCalledWith(
+      expect.objectContaining({ operation: "session.getCurrentUser" }),
+    );
+  });
+
+  it("treats the visitor as signed out when getUser() itself rejects", async () => {
+    mocks.getUser.mockRejectedValue(new Error("fetch failed"));
+
+    const { getCurrentUser } = await import("@/lib/auth/session");
+
+    await expect(getCurrentUser()).resolves.toBeNull();
+    expect(console.error).toHaveBeenCalled();
   });
 });
